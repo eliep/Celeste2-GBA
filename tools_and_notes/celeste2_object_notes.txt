@@ -1,0 +1,225 @@
+object
+	+move_x(x, on_collide)
+		remainder_x
+		x
+	+move_y(y, on_collide)
+		remainder_y
+		y
+	+on_collide_x(moved, target)
+		remainder_x, speed_x
+	+on_collide_y(moved, target)
+		remainder_y, speed_y
+	-update() # macht keinen Sinn zu implementieren
+	draw()
+		eigener sprite
+		x, y
+		flip_x, flip_y # useless?
+	+overlaps(b, ox, oy) # brauchen alle
+		x, y
+		hit_x, hit_y, hit_w, hit_h
+	+contains(px, py)
+		x, y
+		hit_x, hit_y, hit_w, hit_h
+	+check_solid(ox, oy) vllt anders umsetzen
+		x, y
+		hit_x, hit_y, hit_w, hit_h
+	+corner_correct(dir_x, dir_y, side_dist, look_ahead, only_sign, func)
+		x, y
+
+
+grapple_pickup
+	destroyed
+
+	draw
+		x, y
+spike_v, spike_h
+	init vllt unnötig?
+		hazard -> nur id ob up/down spike
+	=> lieber die spikes aufteilen oder so und dann die sprite und so hardcoden. brauche aber die objekte für kollision
+snowball
+	grapple_mode
+	holdable unused?
+	thrown_timer
+	stop
+	hp
+	-----
+	+update
+		y
+		speed_x, speed_y
+		destroyed
+		held, thrown_timer, stop
+	+on_collide_x
+		speed_x
+		remainder_x
+		freeze
+	+on_collide_y
+		speed_y
+		remainder_y
+	+on_release
+		stop
+		thrown_timer
+	+hurt
+		destroyed
+		hp
+	+bounce_overlaps
+		speed_x, hit_x, hit_w
+	+contains
+		x, y
+	draw
+		sprite, x, y
+springboard
+	grapple_mode
+	holdable unused?
+	thrown_timer
+	------
+	+update
+		held
+		thrown_timer
+		y
+		speed_x, speed_y
+		destroyed
+		player
+	+on_collide_x
+		speed_x
+		remainder_x
+		freeze
+	+on_collide_y
+		speed_y
+		remainder_y
+	+on_release
+		thrown_timer
+
+grappler unused?? or maybe air grabbable things?
+	grapple_mode
+	hit_x, hit_y, hit_w, hit_h
+
+bridge
+	+update
+		y, falling
+
+
+berry
+	update
+		collected
+		timer
+		x, y
+		destroyed
+		player, player.x, player.y, player.state, player.last_berry
+		flash
+		ground
+		id => position on map
+		draw??
+	collect
+		player
+		flash
+		ground
+	draw
+		timer
+		flash
+		x, y
+
+crumble
+	solid
+	grapple_mode
+	----
+	init
+		time
+		breaking
+		x, y, ox, oy
+	+update
+		time
+		breaking
+		x, y, ox, oy
+	draw
+		x, y
+		time
+
+checkpoint
+	init
+		id
+		x, y
+	draw
+		id
+		x, y
+
+spawner
+	init
+		timer
+		x
+		dir
+	+update
+		timer
+		x
+		dir
+
+player
+	start_grapple
+	grapple_check
+	jump
+	bounce
+	spring
+	wall_jump
+	grapple_jump
+	bounce_check
+	die
+	hazard_table
+	hazard_check
+	correction_func
+	release_holding
+
+	init
+	update
+	on_collide_x
+	on_collide_y
+	draw
+
+#######
+object - alle
+	x, y, hit_x, hit_y, hit_w, hit_h
+movement - snowball, springboard, player
+	remainder_x, remainder_y, speed_x, speed_y
+destroyed - grapple_pickup, snowball, springboard, berry
+id - berry, checkpoint
+grab - snowball, springboard
+	holdable unused?
+	thrown_timer
+	held
+	freeze
+grapple_mode - snowball, springboard, crumble
+player - berry, springboard # als pointer
+snowball extra
+	stop, hp
+bridge extra
+	falling
+berry extra
+	collected
+	timer
+	flash
+	ground
+crumble extra
+	solid
+	time
+	breaking
+	ox, oy
+spawner extra
+	dir
+	timer
+
+
+#### solid
+maybe encode map binary solid/not solid
+can use bitmask and then check for solid if >0 
+
+
+##### obj count in maps
+1 bridge
+1 grapple_pickup
+1 Player
+6 Berries
+11 Checkpoints
+16 grappler?
+19 Crumble
+5 Springboards
+4 Spawner
+xx Spikes?
+xx Snowball

@@ -1,0 +1,306 @@
+-snowball drawn twice +1pixel ->2 sprites
+spikes are 4 tiles for every direction
+-extra sprite for 1000 points number?
+-extra sprite on berry collect? animation?
+-extra sprite on grapple collect (lines?? (would be done))
+-extra sprites death (circles with positions)
+-extra sprite screenswitch?screenswipe -> multiple sprites, offset by 15px
+-cut off last 4 pixels of screenwipe?
+-extra sprite scarf and grapple string (behind player!)
+-maybe bigger sprite for scarf? (can be above player sometimes->maybe 32x32 behind the player)
+-extra sprite ending screen stats (or as tiles??)
+-time display only numbers extra sprites, ':' in rect sprite
+-berry and grapple need to be horz-flipped! (there is no self.right)
+flag now takes 2 tiles because of animation being bigger than 8x8
+
+
+save extra instead of map: berry, (all sprite-based objects?) 
+
+########columns
+drawn pixel columns: 0-8, 8-24, 24-40, 56-72, 64-72, 80-88, 112-120, 120-136, 136-152, 168-184, 176-184, 192-200,...
+x = 24
+tx = 192
+f41, e15, f17, e7, f9, e23, f41, e15, f17, e7, f9, ...
+full/drawn,empty
+=>5+1tiles, 1empty, 2+1tiles, empty <included, 1+1tiles, 2empty, ...
+
+column
+generate columns dynamically (scroll them in)
+8 (4?) different tile-pairs, because if camera shifts, the position of cut-off space of the column changes-> sides sometimes have holes, sometimes not
+
+bg calculate offset with camera -> conclude which type of smooth or holed
+
+########checkpoint animation:
+from math import sin,pi,floor
+def sin_(x):
+	return sin(-(-x-0.5)*2*pi)
+
+for i in range(30+1):
+	time=i/30
+	print(f"time:{i}")
+	for i in range(1,7+1):
+		num = sin_(-time * 2 + i * 0.25) * (i - 1) * 0.2
+		if num < 0.000001 and num > -0.000001:
+			num = 0.0
+		num = floor(num)
+
+		print(f"{i}: y + {num}")
+# prints if the flag column is shifted up or down by how many pixels
+=> draw on tile, only one object active at a time!
+INSTEAD HARDCODE ALL FRAMES:
+cls()
+for t=0,31 do
+	x = t%8*9
+	y = flr(t/8)*8*2+24
+	sspr(104, 0, 1, 8, x, y)
+	pal(2, 11)
+	for i=1,7 do
+	    sspr(104 + i, 0, 1, 8, x + i, y + sin(-t/30 * 2 + i * 0.25) * (i - 1) * 0.2)
+	end
+	pal()
+end
+=> cycles every 15 frames
+
+######### screenwipe
+moves 191/12 every frame.
+
+wipe_timer wipe:
+sprite lines are drawn exactly 0...drawn pixel inclusive
+a pattern cycles every 20 lines (i use 60). is then offset by 15 pixels
+
+infade is flipped on both axes
+both wipe types can use the same same sprite
+-> flip sprite on both axes and move the objects a bit
+
+black rect on row 115 does not exactly follow the pattern, because of rounding
+-> don't care
+starting from infade==10 the animation is one pixel off. probably the same for wipe_timer wipe
+-> don't care
+
+#######grapple collect white lines/shine:
+Defined by:
+spr(20, self.x - 4, self.y - 18) # the grapple
+for i=0,16 do
+    local s = sin(time() * 4 + i/16)
+    local c = cos(time() * 4 + i/16)
+    local ty = self.y - 14
+    line(self.x + s * 16, ty + c * 16, self.x + s * 40, ty + c * 40, 7)
+end
+->3 tiles wide 1px lines
+->angle = time()*4+i/16 and position is first line point (first 2 arguments)
+
+##########berry collect circles
+Draw with:
+cls()
+for i=1,5 do
+	x = 40*i
+	x+=10
+	if i < 3 then
+		y = 40
+	else
+		y = 80
+		x -=40*3
+	end
+	flash = i+1
+	circ(x + 4, y + 4, flash * 3, 7)
+	circfill(x + 4, y + 4, 5, 7)
+end
+=> can't fit biggest circle into spritesheet :(
+=> maybe by loading on the fly?
+	=> can't bother
+=> last circle is same as Circle 7
+
+#######draw clouds
+in c when modulo and /2: first multiply left side by 2, and later divide the result
+check modulo rules with:
+x = 1+(23) % (5+3) - 3 / 2
+y = 2+(17) % (5 + 3 / 2)
+=>maybe useless? can be implemented better?
+
+holed fg clouds
+=> 2 different sets of sprites with offset holes
+=> calculate which sprite from position (similar to columns)
+
+when randomly choosing clouds load/cache charname and size etc at this point.
+
+######sin/cos conversion:
+def sin_(x):
+	return sin((x+0.5)*2*pi)
+def cos_(x):
+	return cos(x*2*pi)
+
+########palette usage:
+titlescreen:
+	tiles,snow and logo use normal palette
+	fonts use specific palettes
+	->on start all switches to use titlestart palette
+
+######spritesheet usage:
+maybe unload sprites after use:
+	grapple collect lines
+	grapple sprite
+	falling bridge
+	clouds
+		holed clouds only on map 2
+		after that only full clouds
+	ending stats
+	-or put celeste logo in tiles (must adjust position)
+-skull and clock together on the end stats sprite
+
+########audio
+sfx
+must bake sound effects. also -2 is relase sound from loop.
+->make variable for sound and loop it in update_pico??
+
+id, off, len, lock
+-2
+hit == 2 and 7 or 14, 8, 3
+7, 0, 4
+7, 4, 4
+7, 12, 4
+7, 16, 6
+7, 24, 6
+8, 0, 5
+8, 8, 8, 20
+8, 16, 4
+8, 20, 4
+8, 24, 6, 20
+14, 0, 5
+14, 8, 3
+14, 16, 16, 120
+17, 0, 2 # sound only 1 note
+17, 2, 3
+17, 5, 3
+17, 8, 16
+17, 24, 9#1 note short
+
+
+mus
+2->2,22->24->24,36->36,37->37,38->38,39,40
+
+guide?
+convert to 8bit pcm in audacity => as it sounds on gba
+?remove high frequency parts in audacity
+probably split into multiple equal parts in audacity
+normalize => make file hearable
+
+export (8bit) and resample (16384 hz) in audacity 
+normalize and remove clicking all in openmpt 
+
+snd52 (dröhnen):
+set project sample rate
+hochpassfilter 30
+tiefpassfilter 250
+export 8bit
+split
+remove silence noise in openmpt
+normalize in openmpt
+amplify 150
+
+snd53 und snd51 (sturm):
+sample rate
+tiefpass 9000
+export
+split
+normalize in openmpt
+(remove silence noise in openmpt)
+amplify 25
+
+mus2:
+samplerate and export
+fix samples and remove silence noise
+amplify 300
+
+Doc:
+object id is sprite id
+grapplemode: 	
+	0-no interaction
+	1-wall/climbable
+	2-grappler (red circle thing in the air)
+	3-holdable (why extra holdable var?)
+
+sprite flags:
+0 - stuff that should always be simply drawn, blocks (floor, car, etc.)
+	=> useless for me
+1 - solid blocks for collision (crumble does not count)
+2 - ice blocks (can't be grabbed)
+	=> no such blocks on maps 0,2,3,8
+7 - blocks, which change color depending on level.pal
+	=> solved with palletes
+others unused?
+
+#####font:
+lANI'S tREK
+a game by
+maddy thorson
+lena raine
+level
+trailhead
+glacial caves
+golden valley
+destination
+
+aAbcdeE ghiI KlmnNo rRsSt v y '
+abcde ghi lmno rst v y
+AEIKNRS'
+
+GBA screen order:
+
+bg3 bg-color 
+sprites clouds
+bg2 columns
+bg1 tiles
+other sprites
+snow and fg clouds
+bg0 black overlay (only 16x16 screen)
+
+palettes:
+bg 
+	normal
+	all black (overlay and screenwipe tiles)
+	background color
+	floor etc (ice level etc)
+sprites
+	normal
+	all black (screenwipe sprite)
+	bg cloud color (fg and bg clouds use different! [map5], fg uses normal)
+	1000 point number
+	lavender as black (ending screen stats and time)
+	white as yellow (death circles)
+	white as pink (font)
+	white as dark blue (font)
+	white as dark gray (font)
+
+OAM:
+?x 	font level name bg0
+7x  time display 
+2x  screenwipes bg0
+25x snow bg0
+15+14x fg clouds?
+16x grapple collect shines
+1x  player bg1
+1x  scarf bg1
+1x  grapple bg1
+1x  1000points
+?x  berry
+1x  berry collect
+?x  snowball
+8x 	death circles
+[?x font (ending stats)]
+25x clouds bg3
+
+
+
+
+need GBAFIX?
+
+could pack palettes etc better, but why would I need to?
+
+modulo is positive on pico8
+CHANGE MODULO AND FLOAT WITH FASTER STUFF 25 modulos are about 10 scanlines
+GET POS MOD OUT!!!!!!
+
+some fg clouds are not on the ground -> because tearing/artifacts?
+=>OAM 106 tearing, bg cloud 22
+=> now oam 76? tearing
+=> was because scanline limit

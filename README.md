@@ -28,3 +28,6 @@ Install [devkitpro](https://devkitpro.org/wiki/Getting_Started) and install GBA 
 
 # About Development
 There is another Readme under `tools_and_notes` with info about my tools etc.
+
+# Celeste Classic GBA
+Also check out the GBA port of the first game Celeste Classic: https://github.com/JeffRuLz/Celeste-Classic-GBA

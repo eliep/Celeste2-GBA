@@ -11,6 +11,7 @@
 #include "gameobjects.h"
 #include "gameobjects_draw.h"
 #include "soundbank.h"
+#include "sram.h"
 //#include "mgba.h"
 
 // might hit sprite-pixels per scanline limit if too high.
@@ -51,7 +52,6 @@ int show_score = 0,
 
 bool paused = false;
 
-
 void __init(); // _init() already exists in toolchain
 void _update();
 void _draw1();
@@ -64,8 +64,13 @@ void print_center(char* text, unsigned int text_len, int x, int y, int c);
 //void snap_camera(); // unused?
 void goto_level(int level);
 void set_random_clouds();
-void reset_game();
+void reset_game(bool hard_reset);
 int main();
+
+
+static int c_offset = 0;
+static bool c_flag = false;
+
 
 
 void __init(){ // _init() already exists in toolchain
@@ -101,7 +106,7 @@ void _update(){
 	// level intro card
 	else if(level_intro > 0){
 		level_intro -= 1;
-		if(level_intro == 0) 
+		if(level_intro == 0)
 			psfx(SFX_SFX17_24_9, -1);
 	}
 
@@ -221,6 +226,15 @@ void _draw1(){
 	draw_level_objects_sprites();
 }
 
+void _screenwipe(int wipe_timer) {
+    int e = (127 + 64) * (wipe_timer - 5) / 12;
+    draw_screenwipe(e -46, 0, false);
+    draw_screenwipe(e -46 - 15, 60, false);
+    draw_screenwipe(e -46 - 2*15, 120, false);
+    // make other tiles black
+    set_overlay_outfade(e -46 -2*15);
+}
+
 // called in actual draw frame
 void _draw2(){
 	if(level_index == 0 || level_intro > 0)
@@ -239,12 +253,7 @@ void _draw2(){
 
 	// screen wipes
 	if(current_gameobjects.player.wipe_timer > 5){
-		int e = (127 + 64) * (current_gameobjects.player.wipe_timer-5) / 12;
-		draw_screenwipe(e -46, 0, false);
-		draw_screenwipe(e -46 - 15, 60, false);
-		draw_screenwipe(e -46 - 2*15, 120, false);
-		// make other tiles black
-		set_overlay_outfade(e -46 -2*15);
+	    _screenwipe(current_gameobjects.player.wipe_timer);
 	}
 	
 	if(infade < 15){
@@ -382,9 +391,6 @@ void camera_x_barrier(int tile_x, int px, int py){
 		camera_target_x = max2(camera_target_x, bx);
 	}
 }
-
-static int c_offset = 0;
-static bool c_flag = false;
 
 // 0: Titlescreen
 void camera_mode0(int px, int py){
@@ -530,6 +536,25 @@ void next_level(){
 	goto_level(level_index);
 }
 
+SaveData current_state() {
+    SaveData save;
+    save.magic = SAVE_DATA_MAGIC;
+    save.level_index = level_index;
+    save.frames = frames;
+    save.seconds = seconds;
+    save.minutes = minutes;
+    save.hours = hours;
+    save.shake = shake;
+    save.berry_count = berry_count;
+    save.death_count = death_count;
+    save.current_music = current_music;
+    for (int i = 0; i < BERRY_COUNT; ++i)
+    {
+        save.collected[i] = collected[i];
+    }
+    return save;
+}
+
 void restart_level(){
 	camera_x = 0;
 	camera_y = 0;
@@ -542,6 +567,12 @@ void restart_level(){
 
 	//create objects
 	load_level_objects(level_index);
+
+	// save state on death and next_level
+	// starting at level 1
+	if (level_index > 2) {
+	    sram_save(current_state());
+    }
 }
 
 
@@ -558,36 +589,53 @@ void set_random_clouds(){
 	}
 }
 
-void reset_game(){
+void reset_game(bool hard_reset){
     // clear map and middlescreen
     // reset globals
-    level_index = 0;
-    level_intro = 0;
 
+    level_intro = 0;
+    sfx_timer = 0;
+    show_score = 0;
+    titlescreen_flash = -100;
+
+    level_index = 0;
     freeze_time = 0;
     frames = 0;
 	seconds = 0;
 	minutes = 0;
 	hours = 0;
 	shake = 0;
-    sfx_timer = 0;
-	show_score = 0;
 	berry_count = 0;
     death_count = 0;
 	current_music = 0;
     for(int i = 0; i < BERRY_COUNT; i++)
 		collected[i] = false;
-    titlescreen_flash = -100;
-
     c_offset = 0;
     c_flag = false;
-
 	level_checkpoint = NULL;
 
-	camera(0,0);
-	set_shake_offsets(0,0);
-	set_overlay(0,false);
-	music(-1);
+    SaveData previous_game = {0};
+    if (!hard_reset && sram_load(&previous_game))
+    {
+        level_index = previous_game.level_index;
+        frames = previous_game.frames;
+        seconds = previous_game.seconds;
+        minutes = previous_game.minutes;
+        hours = previous_game.hours;
+        shake = previous_game.shake;
+        berry_count = previous_game.berry_count;
+        death_count = previous_game.death_count;
+        for(int i = 0; i < BERRY_COUNT; i++)
+            collected[i] = previous_game.collected[i];
+        _screenwipe(20);
+    }
+    else
+    {
+        camera(0,0);
+        set_shake_offsets(0,0);
+        set_overlay(0,false);
+        music(-1);
+    }
 	set_random_clouds();
 	paused = false;
 
@@ -598,7 +646,7 @@ int main(){
 	//mgba_open();
 	//char str[10];
     init_pico8();
-    reset_game();
+    reset_game(false);
 
 	while(1){
 		/*if(btn(KEY_LEFT))
@@ -609,13 +657,14 @@ int main(){
 			b-=3;
 		if(btn(KEY_DOWN))
 			b+=3;*/
-		if(btn(KEY_L)&&btn(KEY_R)&&btn(KEY_DOWN)&&btn(KEY_B)&&btnp(KEY_START)){
-			/*if(level_index == 0)
-				set_random_clouds();
-			next_level();*/
-			reset_game();
+		if(btn(KEY_L)&&btn(KEY_R)&&btn(KEY_A)&&btn(KEY_B)&&btnp(KEY_START)){
+			reset_game(true);
 			// Resets newly pressed buttons.
 			// Otherwise game start may get triggered instantly
+			update_keys();
+		}
+		if(btn(KEY_L)&&btn(KEY_R)&&btn(KEY_DOWN)&&btn(KEY_B)&&btnp(KEY_START)){
+			reset_game(false);
 			update_keys();
 		}
 		if(btnp(KEY_SELECT)){

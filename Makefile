@@ -25,12 +25,15 @@ GBA_VERSION   := 1
 # the makefile is found
 #
 #---------------------------------------------------------------------------------
-TARGET		:= $(notdir $(CURDIR))
-BUILD		:= build
-SOURCES		:= source
-INCLUDES	:= include
-DATA		:= data
-MUSIC		:= maxmod_data
+TARGET_PREFIX ?= $(notdir $(CURDIR))
+BUILD		  := build
+RELEASE		  := release
+SOURCES		  := source
+INCLUDES	  := include
+DATA		  := data
+MUSIC		  := maxmod_data
+
+TARGET = $(addsuffix "-v$(GBA_VERSION)", $(TARGET_PREFIX))
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -46,7 +49,7 @@ CFLAGS	:=	-g -Wall -O3\
 # -Wextra
 # -DDEBUG
 # -ffast-math
-CFLAGS	+=	$(INCLUDE)
+CFLAGS	+=	$(INCLUDE) $(EXTRA_CFLAGS)
 
 CXXFLAGS	:=	$(CFLAGS) -fno-rtti -fno-exceptions
 
@@ -130,7 +133,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).gba 
+	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).gba
 
 
 #---------------------------------------------------------------------------------
